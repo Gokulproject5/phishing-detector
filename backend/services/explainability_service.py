@@ -1,4 +1,3 @@
-import shap
 import numpy as np
 import torch
 import asyncio
@@ -6,14 +5,20 @@ import asyncio
 class ExplainabilityService:
     def __init__(self, model_service):
         self.model_service = model_service
-        # SHAP explainer for NLP models
-        # Using a partition explainer which is optimized for transformers
-        self.explainer = shap.Explainer(
-            self.model_service.get_pipeline_callback(),
-            self.model_service.tokenizer
-        )
+        self.explainer = None
+
+    def _ensure_explainer(self):
+        if self.explainer is None:
+            import shap
+            print("Initializing Neuro-Diagnostic Engine (SHAP)...")
+            self.explainer = shap.Explainer(
+                self.model_service.get_pipeline_callback(),
+                self.model_service.tokenizer # This will be loaded by callback if not yet
+            )
+            print("Diagnostic Engine ready.")
 
     async def get_explanation(self, text: str):
+        self._ensure_explainer()
         try:
             # Wrap the CPU-intensive SHAP calculation in a thread to keep FastAPI responsive
             loop = asyncio.get_event_loop()

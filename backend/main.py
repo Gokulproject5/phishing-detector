@@ -40,6 +40,14 @@ explainer_service = ExplainabilityService(model_service)
 chatbot_service = ChatbotService()
 auth_service = AuthService()
 
+@app.get("/")
+def read_root():
+    return {"status": "online", "message": "PhishGuard AI Neural Core v2.4"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "timestamp": datetime.utcnow()}
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):

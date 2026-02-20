@@ -51,6 +51,18 @@ This guide outlines the steps to deploy PhishGuard AI in a production environmen
 2.  Zip the `browser-extension` folder.
 3.  Upload to the Chrome Web Store or distribute as a developer-mode extension.
 
+## Database Setup (PostgreSQL Recommended)
+
+For production, it is highly recommended to use a managed PostgreSQL database instead of the default SQLite.
+
+1.  **Create a Database**: On Render, create a new **PostgreSQL** database.
+2.  **Get Connection String**: Copy the **Internal Database URL** (for backend services on Render) or **External Database URL**.
+3.  **Configue Backend**: Set the `DATABASE_URL` environment variable in your Backend Web Service to this connection string.
+
+The app will automatically detect the production database and initialize the tables on startup.
+
+---
+
 ## Render.com Deployment (Monorepo)
 
 If you are deploying on **Render**, you must configure the **Root Directory** for each service:
