@@ -51,7 +51,28 @@ This guide outlines the steps to deploy PhishGuard AI in a production environmen
 2.  Zip the `browser-extension` folder.
 3.  Upload to the Chrome Web Store or distribute as a developer-mode extension.
 
-## Cleanup Checklist
+## Render.com Deployment (Monorepo)
+
+If you are deploying on **Render**, you must configure the **Root Directory** for each service:
+
+### 1. Web Service (Backend)
+- **Repo URL**: Your GitHub URL
+- **Root Directory**: `backend`
+- **Runtime**: `Python 3`
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- **Env Vars**: Add `SECRET_KEY`, `GEMINI_API_KEY`, and `ALLOWED_ORIGINS`.
+
+### 2. Static Site (Frontend)
+- **Repo URL**: Your GitHub URL
+- **Root Directory**: `frontend`
+- **Build Command**: `npm install && npm run build`
+- **Publish Directory**: `dist`
+- **Env Vars**: Add `VITE_API_URL` pointing to your backend service URL.
+
+---
+
+## Technical Cleanup Checklist
 - [x] Hardcoded localhost URLs removed from frontend.
 - [x] CORS restricted to authorized origins.
 - [x] Sensitive keys moved to environment variables.
