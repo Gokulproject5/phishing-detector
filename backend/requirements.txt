@@ -10,3 +10,9 @@ scipy
 pandas
 Requests
 matplotlib
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+sqlalchemy
+motor
+certifi

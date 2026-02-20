@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            width: 300px;
+            padding: 16px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0F172A;
+            color: white;
+            margin: 0;
+        }
+
+        .header {
+            display: flex;
+            align-items:center;
+            gap: 12px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #1E293B;
+            padding-bottom: 12px;
+        }
+
+        .logo {
+            width: 32px;
+            height: 32px;
+            background: #6366F1;
+            border-radius: 8px;
+        }
+
+        .status-card {
+            background: #1E293B;
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .scan-btn {
+            width: 100%;
+            background: #6366F1;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .scan-btn:hover {
+            background: #4F46E5;
+        }
+
+        .results {
+            margin-top: 16px;
+            font-size: 13px;
+        }
+
+        .legit {
+            color: #10B981;
+        }
+
+        .phish {
+            color: #EF4444;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="logo"></div>
+        <div style="font-weight: bold; font-size: 16px;">PhishGuard AI</div>
+    </div>
+
+    <div class="status-card">
+        <div id="status-text" style="font-size: 14px; margin-bottom: 4px;">Scanning active tab...</div>
+        <div id="url-text" style="font-size: 10px; color: #94A3B8; word-break: break-all;"></div>
+    </div>
+
+    <button id="scan-btn" class="scan-btn">Analyze Current Page</button>
+
+    <div id="results" class="results"></div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>

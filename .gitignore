@@ -25,5 +25,10 @@ build/
 # Project specific
 backend/venv/
 backend/.env
+frontend/.env
 frontend/node_modules/
 frontend/dist/
+
+# Databases
+*.db
+*.sqlite3
