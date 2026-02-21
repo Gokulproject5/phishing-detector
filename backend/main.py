@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from database import get_db, User, Scan
+from database import get_db, User, Scan, init_db
 
 from services.model_service import ModelService
 from services.explainability_service import ExplainabilityService
@@ -39,6 +39,12 @@ model_service = ModelService()
 explainer_service = ExplainabilityService(model_service)
 chatbot_service = ChatbotService()
 auth_service = AuthService()
+
+@app.on_event("startup")
+def startup_event():
+    print("Neuro-Link Established. Initializing Neural Logs...")
+    init_db()
+    print("Neural Core v2.4 Online and listening for threats.")
 
 @app.get("/")
 def read_root():
