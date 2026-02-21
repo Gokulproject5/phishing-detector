@@ -74,7 +74,11 @@ If you are deploying on **Render**, you must configure the **Root Directory** fo
 - **Build Command**: `pip install -r requirements.txt`
 - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 - **Port**: Render should automatically detect the port from the `$PORT` variable. If it fails, explicitly set the **Port** field in your Render service settings to `10000` (the Render default) or `8000` and ensure your environment variable matches.
-- **Env Vars**: Add `SECRET_KEY`, `GEMINI_API_KEY`, and `ALLOWED_ORIGINS`.
+- **Env Vars**: 
+    - `SECRET_KEY`: Generate a secure string.
+    - `GEMINI_API_KEY`: Your Google AI key.
+    - `DATABASE_URL`: Connection string.
+    - `ALLOWED_ORIGINS`: Set this to your frontend URL(s). For example: `https://phishing-detector-delta.vercel.app`. Separate multiple URLs with commas.
 
 ### 2. Static Site (Frontend)
 - **Repo URL**: Your GitHub URL
