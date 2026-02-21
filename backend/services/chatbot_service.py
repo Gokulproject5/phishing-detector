@@ -1,16 +1,27 @@
 import os
-import google.generativeai as genai
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ChatbotService:
     def __init__(self):
-        api_key = os.getenv("GEMINI_API_KEY")
-        if api_key:
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
-        else:
-            self.model = None
+        self.model = None
+        self._initialized = False
+
+    def _ensure_genai(self):
+        if not self._initialized:
+            api_key = os.getenv("GEMINI_API_KEY")
+            if api_key:
+                try:
+                    import google.generativeai as genai
+                    genai.configure(api_key=api_key)
+                    self.model = genai.GenerativeModel('gemini-1.5-flash')
+                except Exception as e:
+                    logger.error(f"Failed to load Gemini: {e}")
+            self._initialized = True
 
     def get_response(self, message: str, context: str = ""):
+        self._ensure_genai()
         if not self.model:
             return "PhishGuard AI is currently in offline mode. To enable full neuro-linguistic analysis, please configure a valid GEMINI_API_KEY in the system settings."
 
@@ -29,6 +40,7 @@ class ChatbotService:
             return "The AI engine is currently experiencing high load. Technical details: The prediction model detected specific linguistic markers common in social engineering. Recommended Action: Exercise caution and verify the sender via a secondary channel."
 
     def explain_threat(self, prediction: str, top_features: list):
+        self._ensure_genai()
         if not self.model:
             return self._get_fallback_explanation(prediction, top_features)
 

@@ -1,7 +1,3 @@
-import numpy as np
-import torch
-import asyncio
-
 class ExplainabilityService:
     def __init__(self, model_service):
         self.model_service = model_service
@@ -19,6 +15,8 @@ class ExplainabilityService:
 
     async def get_explanation(self, text: str):
         self._ensure_explainer()
+        import asyncio
+        import numpy as np
         try:
             # Wrap the CPU-intensive SHAP calculation in a thread to keep FastAPI responsive
             loop = asyncio.get_event_loop()

@@ -1,7 +1,3 @@
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
-import torch.nn.functional as F
-
 class ModelService:
     def __init__(self, model_name="ElSlay/BERT-Phishing-Email-Model"):
         self.model_name = model_name
@@ -10,6 +6,7 @@ class ModelService:
 
     def _ensure_loaded(self):
         if self.model is None:
+            from transformers import AutoTokenizer, AutoModelForSequenceClassification
             print(f"Loading Neural Engine models: {self.model_name}...")
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
@@ -18,6 +15,9 @@ class ModelService:
 
     def predict(self, text: str):
         self._ensure_loaded()
+        import torch
+        import torch.nn.functional as F
+        
         inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
         with torch.no_grad():
             outputs = self.model(**inputs)
@@ -42,6 +42,8 @@ class ModelService:
         # Helper for SHAP to handle tokenization and model call
         def pipeline_callback(texts):
             self._ensure_loaded()
+            import torch
+            import torch.nn.functional as F
             inputs = self.tokenizer(texts, return_tensors="pt", truncation=True, max_length=512, padding=True)
             with torch.no_grad():
                 outputs = self.model(**inputs)
