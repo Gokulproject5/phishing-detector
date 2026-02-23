@@ -45,35 +45,52 @@ const Explainer = ({ data }) => {
 
             <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
                 {/* Chart */}
-                <div className="rounded-2xl p-6 border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
+                <div className="rounded-2xl p-6 border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow flex flex-col">
                     <div className="flex items-center justify-between mb-6">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Impact Distribution</p>
-                        <div className="flex items-center gap-4 text-[10px] font-bold">
-                            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" />Phishing</span>
-                            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" />Safe</span>
-                        </div>
+                        {chartData.length > 0 && (
+                            <div className="flex items-center gap-4 text-[10px] font-bold">
+                                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" />Phishing</span>
+                                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" />Safe</span>
+                            </div>
+                        )}
                     </div>
-                    <div className="h-[280px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                                <XAxis type="number" hide />
-                                <YAxis
-                                    dataKey="name"
-                                    type="category"
-                                    tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-                                    width={100}
-                                    axisLine={false}
-                                    tickLine={false}
-                                />
-                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(241, 245, 249, 0.5)' }} />
-                                <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={16}>
-                                    {chartData.map((entry, i) => (
-                                        <Cell key={i} fill={entry.value > 0 ? '#ef4444' : '#10b981'} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+
+                    <div className="h-[280px] flex items-center justify-center">
+                        {chartData.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData} layout="vertical" margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                                    <XAxis type="number" hide />
+                                    <YAxis
+                                        dataKey="name"
+                                        type="category"
+                                        tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
+                                        width={100}
+                                        axisLine={false}
+                                        tickLine={false}
+                                    />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(241, 245, 249, 0.5)' }} />
+                                    <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={16}>
+                                        {chartData.map((entry, i) => (
+                                            <Cell key={i} fill={entry.value > 0 ? '#ef4444' : '#10b981'} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="text-center space-y-3">
+                                <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 mx-auto">
+                                    <Activity size={24} className="opacity-20" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-slate-400">Diagnostic Data Unavailable</p>
+                                    <p className="text-[10px] text-slate-300 font-medium max-w-[200px] mx-auto">
+                                        The Neural Core failed to generate feature impacts for this specific input pattern.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 

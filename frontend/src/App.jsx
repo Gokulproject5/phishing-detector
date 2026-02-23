@@ -9,6 +9,7 @@ import Login from './components/Login';
 import EmailInbox from './components/EmailInbox';
 import Profile from './components/Profile';
 import API_URL from './config';
+import NeuralLabs from './components/NeuralLabs';
 import { ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -70,6 +71,11 @@ function App() {
                 }
                 setLastScanTimestamp(latestTs);
                 setLastScanId(latest.id);
+            }
+
+            if (!Array.isArray(raw)) {
+                console.error('History data is not an array', raw);
+                return;
             }
 
             const mapped = raw.map(s => ({
@@ -210,6 +216,8 @@ function App() {
                         </div>
                     </div>
                 );
+            case 'neural':
+                return <NeuralLabs />;
             // ...
             default:
                 return <DashboardHome user={user} onNavigateToAnalyze={() => setActiveTab('analyze')} />;

@@ -27,6 +27,8 @@ class User(Base):
     full_name = Column(String)
     hashed_password = Column(String)
     is_email_connected = Column(Boolean, default=False)
+    email_user = Column(String, nullable=True)
+    email_password = Column(String, nullable=True) # Recommended to be an App Password
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Scan(Base):

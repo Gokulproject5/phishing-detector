@@ -5,7 +5,7 @@ import {
     Mail, Inbox, Shield, AlertTriangle, CheckCircle,
     Clock, Search, Trash2, Eye, ChevronRight, RefreshCw,
     Filter, MoreVertical, Star, Paperclip, Link2, ExternalLink,
-    Lock, Smartphone, ShieldAlert
+    Lock, Smartphone, ShieldAlert, Sparkles
 } from 'lucide-react';
 import API_URL from '../config';
 
@@ -19,52 +19,47 @@ const EmailInbox = ({ user, onRefreshUser }) => {
     const [linkingAccount, setLinkingAccount] = useState(false);
     const [syncProgress, setSyncProgress] = useState(0);
     const [syncing, setSyncing] = useState(false);
-
-    // Mock Inbox Data
-    const [emails, setEmails] = useState([
-        {
-            id: 1,
-            from: "Bank Security <security@alert-verify-account.com>",
-            subject: "Urgent: Unusual Login Detected",
-            preview: "We detected an unusual login to your account from a new device in Moscow, Russia. Please click...",
-            body: "We detected an unusual login to your account from a new device in Moscow, Russia. If this was not you, please verify your account immediately at http://secure-verify-auth.net/login. Failure to do so will result in account suspension.",
-            time: "10:24 AM",
-            status: 'unread',
-            isPhish: true
-        },
-        {
-            id: 2,
-            from: "HR Department <internal@company.com>",
-            subject: "Updated Quarterly Benefits PDF",
-            preview: "Hello Team, please find the updated benefits guide attached for Q3. If you have any questions...",
-            body: "Hello Team, please find the updated benefits guide attached for Q3. If you have any questions, reach out to Sarah in HR.",
-            time: "09:15 AM",
-            status: 'read',
-            isPhish: false
-        },
-        {
-            id: 3,
-            from: "Netflix Support <billing@netflix-service.net>",
-            subject: "Payment Method Error",
-            preview: "We're having some trouble with your current billing information. We'll try again, but in the...",
-            body: "We're having some trouble with your current billing information. We'll try again, but in the meantime, you may want to update your payment details at http://netflix-billing-update.com/account",
-            time: "Yesterday",
-            status: 'unread',
-            isPhish: true
-        }
-    ]);
+    const [showConnectForm, setShowConnectForm] = useState(false);
+    const [credentials, setCredentials] = useState({ email: '', password: '', provider: 'gmail' });
+    const [error, setError] = useState(null);
+    const [emails, setEmails] = useState([]);
 
     useEffect(() => {
         if (user) {
             setIsConnected(user.is_email_connected);
+            if (user.is_email_connected) {
+                fetchEmails();
+            }
         }
     }, [user]);
 
-    const handleSync = async () => {
+    const fetchEmails = async () => {
         setSyncing(true);
-        // Simulate high-frequency neural sync
-        await new Promise(r => setTimeout(r, 1500));
-        setSyncing(false);
+        setError(null);
+        try {
+            const token = localStorage.getItem('phish_token');
+            const res = await axios.get(`${API_BASE}/api/email/fetch?limit=15`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (Array.isArray(res.data)) {
+                setEmails(res.data);
+                if (res.data.length > 0 && !selectedEmail) {
+                    setSelectedEmail(res.data[0]);
+                }
+            } else {
+                console.error("Fetched emails is not an array", res.data);
+                setEmails([]);
+            }
+        } catch (err) {
+            console.error("Failed to fetch emails", err);
+            setError("Could not fetch emails. Please check your connection.");
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    const handleSync = async () => {
+        await fetchEmails();
     };
 
     const handleLevelScan = async (email) => {
@@ -72,14 +67,19 @@ const EmailInbox = ({ user, onRefreshUser }) => {
         setScanResult(null);
         try {
             const token = localStorage.getItem('phish_token');
-            const res = await axios.post(`${API_BASE}/predict`, { text: email.body }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setScanResult(res.data);
+            // If already scanned by backend, use it
+            if (email.scan_result) {
+                setScanResult(email.scan_result);
+            } else {
+                const res = await axios.post(`${API_BASE}/predict`, { text: email.body }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setScanResult(res.data);
+            }
 
             await axios.post(`${API_BASE}/scans/save`, {
                 url: `[Email Scan] ${email.subject}`,
-                result: res.data
+                result: email.scan_result || scanResult
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -91,62 +91,176 @@ const EmailInbox = ({ user, onRefreshUser }) => {
         }
     };
 
-    const startLinking = async () => {
+    const submitCredentials = async (e) => {
+        e.preventDefault();
         setLinkingAccount(true);
         setSyncProgress(0);
+        setError(null);
 
         try {
             const token = localStorage.getItem('phish_token');
-            // Simulate progression for UX
-            for (let i = 0; i <= 100; i += 10) {
-                setSyncProgress(i);
-                await new Promise(r => setTimeout(r, 200));
-            }
 
-            const res = await axios.post(`${API_BASE}/auth/connect-email?connected=true`, {}, {
+            // Artificial progress for UX
+            const interval = setInterval(() => {
+                setSyncProgress(prev => Math.min(prev + 5, 90));
+            }, 200);
+
+            const res = await axios.post(`${API_BASE}/auth/connect-email-credentials`, credentials, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
+            clearInterval(interval);
+            setSyncProgress(100);
+            await new Promise(r => setTimeout(r, 500));
+
             if (res.data.status === 'success') {
                 setIsConnected(true);
+                setShowConnectForm(false);
                 if (onRefreshUser) onRefreshUser();
+                fetchEmails();
             }
         } catch (err) {
             console.error("Failed to connect email", err);
+            setError(err.response?.data?.detail || "Connection failed. Please check credentials.");
+            setLinkingAccount(false);
         } finally {
+            // setLinkingAccount(false); // Managed in catch or success
+        }
+    };
+
+    const handleDemoMode = async () => {
+        setLinkingAccount(true);
+        setSyncProgress(0);
+        setError(null);
+        try {
+            const demoCreds = { email: 'demo@phishguard.ai', password: 'demo123', provider: 'gmail' };
+            const token = localStorage.getItem('phish_token');
+            const res = await axios.post(`${API_BASE}/auth/connect-email-credentials`, demoCreds, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.data.status === 'success') {
+                setSyncProgress(100);
+                setTimeout(async () => {
+                    setIsConnected(true);
+                    setShowConnectForm(false);
+                    setLinkingAccount(false);
+                    if (onRefreshUser) onRefreshUser();
+                    await fetchEmails();
+                }, 800);
+            }
+        } catch (err) {
+            setError("Demo mode failed to initialize.");
             setLinkingAccount(false);
         }
+    };
+
+    const startLinking = (provider) => {
+        setCredentials({ ...credentials, provider: provider.toLowerCase().includes('google') ? 'gmail' : provider.toLowerCase().includes('microsoft') ? 'outlook' : 'gmail' });
+        setShowConnectForm(true);
     };
 
     if (!isConnected && !linkingAccount) {
         return (
             <div className="h-[calc(100vh-160px)] flex flex-col items-center justify-center bg-white rounded-2xl border border-slate-200 shadow-sm animate-fade-in p-8 text-center bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px]">
-                <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white mb-6 shadow-xl shadow-indigo-200 animate-bounce-slow">
-                    <Mail size={40} />
-                </div>
-                <h2 className="text-3xl font-black text-slate-900 poppins mb-2">Neural Email Defense</h2>
-                <p className="text-slate-500 max-w-md mb-10 font-medium">
-                    Activate PhishGuard's enterprise-grade scanning layer for your inbox. Our BERT model analyzes every incoming thread for advanced social engineering.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-3xl mb-12">
-                    {[
-                        { name: 'Google Workspace', icon: 'G', color: 'text-blue-500' },
-                        { name: 'Microsoft 365', icon: 'M', color: 'text-orange-500' },
-                        { name: 'Custom SMTP', icon: 'S', color: 'text-slate-700' }
-                    ].map(provider => (
-                        <button
-                            key={provider.name}
-                            onClick={startLinking}
-                            className="p-8 rounded-3xl border border-slate-100 bg-white hover:border-indigo-500 hover:shadow-2xl hover:shadow-indigo-100 hover:-translate-y-1 transition-all flex flex-col items-center gap-4 group"
-                        >
-                            <div className={`w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-2xl font-black ${provider.color} group-hover:scale-110 transition-transform shadow-inner`}>
-                                {provider.icon}
+                {showConnectForm ? (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="w-full max-w-md bg-white p-8 rounded-[32px] shadow-2xl border border-slate-100"
+                    >
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-black text-slate-900 poppins uppercase tracking-tight">Email Handshake</h3>
+                            <button onClick={() => setShowConnectForm(false)} className="text-slate-400 hover:text-slate-600 font-bold text-xs uppercase poppins">Cancel</button>
+                        </div>
+
+                        <form onSubmit={submitCredentials} className="space-y-4">
+                            <div className="space-y-1.5 text-left">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Email Address</label>
+                                <input
+                                    type="email"
+                                    required
+                                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-primary outline-none transition-all"
+                                    placeholder="Enter your email"
+                                    value={credentials.email}
+                                    onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
+                                />
                             </div>
-                            <span className="text-sm font-bold text-slate-700 poppins">Connect {provider.name}</span>
-                        </button>
-                    ))}
-                </div>
-                <div className="flex items-center gap-8 bg-slate-900 px-6 py-3 rounded-2xl text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                            <div className="space-y-1.5 text-left">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">App Password / Pass</label>
+                                <input
+                                    type="password"
+                                    required
+                                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-primary outline-none transition-all"
+                                    placeholder="Enter App Password"
+                                    value={credentials.password}
+                                    onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                                />
+                                <p className="text-[9px] text-slate-400 font-medium px-1">Note: Use an App Password if using Gmail/Outlook (IMAP enabled).</p>
+                                <button
+                                    type="button"
+                                    onClick={handleDemoMode}
+                                    className="text-[9px] text-indigo-500 font-bold hover:underline"
+                                >
+                                    Don't have an App Password? Try Demo Mode
+                                </button>
+                            </div>
+
+                            {error && (
+                                <div className="p-3 bg-red-50 rounded-xl text-red-500 text-[10px] font-bold poppins flex items-center gap-2">
+                                    <AlertTriangle size={12} /> {error}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                className="w-full bg-slate-900 hover:bg-black text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-slate-200 mt-2"
+                            >
+                                Verify & Connect Tunnel
+                            </button>
+                        </form>
+                    </motion.div>
+                ) : (
+                    <>
+                        <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center text-white mb-6 shadow-xl shadow-indigo-200 animate-bounce-slow">
+                            <Mail size={40} />
+                        </div>
+                        <h2 className="text-3xl font-black text-slate-900 poppins mb-2">Neural Email Defense</h2>
+                        <p className="text-slate-500 max-w-md mb-10 font-medium">
+                            Activate PhishGuard's enterprise-grade scanning layer for your inbox. Our BERT model analyzes every incoming thread for advanced social engineering.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-3xl mb-12">
+                            {[
+                                { name: 'Google Workspace', icon: 'G', color: 'text-blue-500' },
+                                { name: 'Microsoft 365', icon: 'M', color: 'text-orange-500' },
+                                { name: 'Custom SMTP', icon: 'S', color: 'text-slate-700' }
+                            ].map(provider => (
+                                <button
+                                    key={provider.name}
+                                    onClick={() => startLinking(provider.name)}
+                                    className="p-8 rounded-3xl border border-slate-100 bg-white hover:border-indigo-500 hover:shadow-2xl hover:shadow-indigo-100 hover:-translate-y-1 transition-all flex flex-col items-center gap-4 group"
+                                >
+                                    <div className={`w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-2xl font-black ${provider.color} group-hover:scale-110 transition-transform shadow-inner`}>
+                                        {provider.icon}
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-700 poppins">Connect {provider.name}</span>
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex flex-col items-center gap-4">
+                            <button
+                                onClick={handleDemoMode}
+                                className="px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-indigo-100 flex items-center gap-3 active:scale-95"
+                            >
+                                <Sparkles size={18} /> Launch Instant Demo
+                            </button>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter flex items-center gap-2">
+                                <Lock size={12} /> No account required for demo mode
+                            </p>
+                        </div>
+                    </>
+                )}
+                <div className="mt-8 flex items-center gap-8 bg-slate-900 px-6 py-3 rounded-2xl text-[10px] font-black uppercase text-slate-400 tracking-widest">
                     <span className="flex items-center gap-1.5 text-indigo-400"><Lock size={12} /> End-to-End Encrypted</span>
                     <span className="flex items-center gap-1.5 text-emerald-400"><Shield size={12} /> Live BERT Ingestion</span>
                     <span className="flex items-center gap-1.5 text-orange-400"><ShieldAlert size={12} /> Zero-Trust Auth</span>
@@ -237,6 +351,11 @@ const EmailInbox = ({ user, onRefreshUser }) => {
                                     <span className={`text-[10px] font-black uppercase ${email.status === 'unread' ? 'text-indigo-600' : 'text-slate-400'}`}>
                                         {email.status}
                                     </span>
+                                    {email.isPhish && (
+                                        <span className="text-[10px] font-black uppercase text-red-500 bg-red-50 px-1.5 py-0.5 rounded-lg flex items-center gap-1">
+                                            <AlertTriangle size={10} /> Threat
+                                        </span>
+                                    )}
                                 </div>
                                 <span className="text-[10px] font-bold text-slate-400">{email.time}</span>
                             </div>

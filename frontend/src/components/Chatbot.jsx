@@ -9,8 +9,11 @@ const API_BASE = API_URL;
 const SUGGESTED = [
     'What are signs of a phishing email?',
     'How does BERT detect phishing?',
-    'What is spear phishing?',
-    'How do I report phishing?',
+    'What is smishing and vishing?',
+    'Common tech support scams',
+    'Best practices for cybersecurity',
+    'Spam vs Phishing: What is the difference?',
+    'How do I protect against ransomware?'
 ];
 
 const Chatbot = ({ user }) => {

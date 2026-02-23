@@ -9,16 +9,18 @@ import {
     Shield,
     LogOut,
     ChevronRight,
-    ChevronLeft
+    ChevronLeft,
+    Zap
 } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab, isCollapsed, setIsCollapsed, onLogout, user }) => {
     const navItems = [
         { id: 'home', label: 'Dashboard', icon: Home },
         { id: 'analyze', label: 'Analytics', icon: Search },
-        { id: 'inbox', label: 'Email Scan', icon: Mail },
+        // { id: 'inbox', label: 'Email Scan', icon: Mail },
         { id: 'chatbot', label: 'AI Assistant', icon: MessageSquare },
         { id: 'insights', label: 'Threat Intel', icon: BarChart3 },
+        { id: 'neural', label: 'Neural Labs', icon: Zap },
     ];
 
     return (

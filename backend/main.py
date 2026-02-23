@@ -14,6 +14,7 @@ from services.model_service import ModelService
 from services.explainability_service import ExplainabilityService
 from services.chatbot_service import ChatbotService
 from services.auth_service import AuthService, Token, UserSchema, SECRET_KEY, ALGORITHM
+from services.email_service import EmailService
 from jose import JWTError, jwt
 
 load_dotenv()
@@ -46,6 +47,7 @@ model_service = ModelService()
 explainer_service = ExplainabilityService(model_service)
 chatbot_service = ChatbotService()
 auth_service = AuthService()
+email_service = EmailService()
 
 @app.on_event("startup")
 def startup_event():
@@ -96,13 +98,23 @@ class SaveScanRequest(BaseModel):
     url: str
     result: dict
 
+class EmailConnectRequest(BaseModel):
+    email: str
+    password: str
+    provider: Optional[str] = "gmail"
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    full_name: Optional[str] = ""
+
 # Authentication Endpoints
 @app.post("/auth/register", response_model=UserSchema)
-def register(user: dict, db: Session = Depends(get_db)):
-    db_user = auth_service.get_user(db, username=user.get("username"))
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = auth_service.get_user(db, username=user.username)
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
-    return auth_service.create_user(db, user)
+    return auth_service.create_user(db, user.dict())
 
 @app.post("/auth/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -143,14 +155,86 @@ def update_profile(request: ProfileUpdate, current_user: User = Depends(get_curr
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/auth/connect-email")
-def connect_email(connected: bool, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@app.post("/auth/connect-email-credentials")
+def connect_email_credentials(request: EmailConnectRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        current_user.is_email_connected = connected
+        # Support Demo Mode for easy navigation
+        if request.email == "demo@phishguard.ai" and request.password == "demo123":
+            current_user.is_email_connected = True
+            current_user.email_user = request.email
+            current_user.email_password = request.password
+            db.commit()
+            return {"status": "success", "message": "Demo Mode Active. Neural Tunnel established."}
+
+        # Test real connection
+        is_valid = email_service.test_connection(request.email, request.password, request.provider)
+        if not is_valid:
+            raise HTTPException(status_code=400, detail="Could not connect to IMAP server. Check credentials and App Password settings.")
+        
+        current_user.is_email_connected = True
+        current_user.email_user = request.email
+        current_user.email_password = request.password
         db.commit()
-        return {"status": "success", "is_email_connected": current_user.is_email_connected}
+        return {"status": "success", "message": "Email account linked and verified."}
+    except HTTPException as e:
+        raise e
     except Exception as e:
+        logger.exception("Email connection failed")
         db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/email/fetch")
+def fetch_emails(limit: int = 10, current_user: User = Depends(get_current_user)):
+    if not current_user.is_email_connected or not current_user.email_user:
+        raise HTTPException(status_code=400, detail="Email account not connected")
+    
+    # Handle Demo Mode Data
+    if current_user.email_user == "demo@phishguard.ai":
+        return [
+            {
+                "id": "demo-1",
+                "from": "Bank Security <security@alert-verify-account.com>",
+                "subject": "Urgent: Unusual Login Detected",
+                "preview": "We detected an unusual login to your account from a new device in Moscow, Russia. Please click...",
+                "body": "We detected an unusual login to your account from a new device in Moscow, Russia. If this was not you, please verify your account immediately at http://secure-verify-auth.net/login. Failure to do so will result in account suspension.",
+                "time": "10:24 AM",
+                "status": "unread",
+                "isPhish": True,
+                "scan_result": {"prediction": "Phishing", "probability": 0.98}
+            },
+            {
+                "id": "demo-2",
+                "from": "Netflix Support <billing@netflix-service.net>",
+                "subject": "Payment Method Error",
+                "preview": "We're having some trouble with your current billing information. We'll try again, but in the...",
+                "body": "We're having some trouble with your current billing information. We'll try again, but in the meantime, you may want to update your payment details at http://netflix-billing-update.com/account",
+                "time": "Yesterday",
+                "status": "unread",
+                "isPhish": True,
+                "scan_result": {"prediction": "Phishing", "probability": 0.89}
+            }
+        ]
+
+    try:
+        emails = email_service.fetch_recent_emails(
+            current_user.email_user, 
+            current_user.email_password,
+            limit=limit
+        )
+        
+        # Automatically scan each email
+        for email in emails:
+            # We use the model_service to predict for each email
+            # We can combine the email body or just subject+body
+            scan_text = f"Subject: {email['subject']}\n\n{email['body']}"
+            prediction = model_service.predict(scan_text)
+            email["scan_result"] = prediction
+            email["isPhish"] = prediction["prediction"] == "Phishing"
+            
+        return emails
+    except HTTPException as e:
+        raise e
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # Persistence Endpoints
@@ -180,6 +264,8 @@ def get_history(current_user: User = Depends(get_current_user), db: Session = De
             {
                 "id": s.id,
                 "url": s.url,
+                "prediction": s.prediction,
+                "score": s.probability,
                 "result": s.details or {"prediction": s.prediction, "probability": s.probability},
                 "timestamp": s.timestamp
             } for s in scans
@@ -260,6 +346,7 @@ def predict(request: PredictRequest, current_user: User = Depends(get_current_us
         result = model_service.predict(request.text)
         return result
     except Exception as e:
+        logger.exception("Prediction engine error")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/explain")
@@ -277,6 +364,7 @@ async def explain(request: ExplainRequest, current_user: User = Depends(get_curr
             "ai_explanation": ai_explanation
         }
     except Exception as e:
+        logger.exception("Explainer engine error")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/chat")
@@ -285,6 +373,7 @@ def chat(request: ChatRequest, current_user: User = Depends(get_current_user)):
         response = chatbot_service.get_response(request.message, request.context)
         return {"response": response}
     except Exception as e:
+        logger.exception("Chatbot engine error")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

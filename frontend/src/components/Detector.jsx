@@ -83,7 +83,7 @@ const Detector = () => {
                 </div>
                 <div className="p-6">
                     <textarea
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 placeholder-slate-400 text-sm leading-relaxed outline-none min-h-[160px] focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 placeholder-slate-400 text-sm leading-relaxed outline-none min-h-[160px] focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all "
                         placeholder="Paste suspicious content here..."
                         value={text}
                         onChange={(e) => setText(e.target.value)}
@@ -248,6 +248,34 @@ const Detector = () => {
                             </div>
                         </div>
 
+                        {/* Heuristic Analysis Section */}
+                        {result.heuristics && result.heuristics.length > 0 && (
+                            <div className="animate-fade-in space-y-3">
+                                <div className="flex items-center gap-2 px-1">
+                                    <ShieldAlert size={14} className="text-alert" />
+                                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest poppins">Verification Engine Flags</h4>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {result.heuristics.map((h, i) => (
+                                        <motion.div
+                                            key={i}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: i * 0.1 }}
+                                            className="p-4 bg-red-50/50 border border-red-100 rounded-2xl flex items-start gap-3 shadow-sm"
+                                        >
+                                            <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center text-alert shrink-0">
+                                                <AlertTriangle size={16} />
+                                            </div>
+                                            <p className="text-xs font-bold text-slate-700 leading-tight">
+                                                {h}
+                                            </p>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Explainer Section */}
                         {explanation && (
                             <div className="animate-fade-in">
@@ -260,6 +288,74 @@ const Detector = () => {
                                 <Explainer data={explanation} />
                             </div>
                         )}
+
+                        {/* Good vs Bad Links Instruction Set */}
+                        <div className="mt-12 space-y-8">
+                            <div className="flex flex-col gap-2">
+                                <h2 className="text-xl font-black text-slate-900 poppins uppercase tracking-tight">Link Safety Intelligence</h2>
+                                <p className="text-slate-500 text-sm font-medium">Follow these neural-verified instructions to distinguish between secure and malicious targets.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Bad Link Section */}
+                                <div className="p-8 rounded-[32px] border border-red-100 bg-red-50/10 space-y-6 relative overflow-hidden group hover:shadow-xl hover:shadow-red-500/5 transition-all">
+                                    <div className="absolute -top-4 -right-4 opacity-5 group-hover:scale-110 transition-transform">
+                                        <AlertTriangle size={120} className="text-red-600" />
+                                    </div>
+                                    <div className="flex items-center gap-3 relative z-10">
+                                        <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 shadow-sm border border-red-200">
+                                            <AlertTriangle size={24} />
+                                        </div>
+                                        <h3 className="text-sm font-black text-slate-800 poppins uppercase tracking-widest">RED FLAGS (MALICIOUS)</h3>
+                                    </div>
+                                    <ul className="space-y-4 relative z-10">
+                                        {[
+                                            { title: "Mismatched Domains", text: "Visible text says 'paypal.com' but hovering reveals 'paypal-security.net'." },
+                                            { title: "IP-Only Destinations", text: "Raw IP addresses (e.g., http://203.0.113.1/login) bypass DNS reputation." },
+                                            { title: "Urgency Lure Patterns", text: "Embedded links in phrases like 'Verify immediately' or 'Emergency Alert'." },
+                                            { title: "Excessive Subdomains", text: "Layers of dots used to hide the real domain (e.g., 'amazon.secure-verify.tk')." }
+                                        ].map((item, i) => (
+                                            <li key={i} className="flex gap-4">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-2 shrink-0 animate-pulse" />
+                                                <div>
+                                                    <p className="text-xs font-black text-slate-800 uppercase tracking-tighter leading-tight mb-1">{item.title}</p>
+                                                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed">{item.text}</p>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                {/* Good Link Section */}
+                                <div className="p-8 rounded-[32px] border border-emerald-100 bg-emerald-50/10 space-y-6 relative overflow-hidden group hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
+                                    <div className="absolute -top-4 -right-4 opacity-5 group-hover:scale-110 transition-transform">
+                                        <Shield size={120} className="text-emerald-600" />
+                                    </div>
+                                    <div className="flex items-center gap-3 relative z-10">
+                                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-200">
+                                            <Shield size={24} />
+                                        </div>
+                                        <h3 className="text-sm font-black text-slate-800 poppins uppercase tracking-widest">SAFE SIGNALS (TRUSTED)</h3>
+                                    </div>
+                                    <ul className="space-y-4 relative z-10">
+                                        {[
+                                            { title: "Direct Path Matching", text: "Hovered URL points exactly to the official brand domain (e.g., google.com)." },
+                                            { title: "Standard TLDs", text: "Trusted organizations use common TLDs like .com, .org, or .gov." },
+                                            { title: "Clean URL Structure", text: "No random hyphens, emojis, or non-latin characters in the domain." },
+                                            { title: "SSL Certification", text: "Look for 'https://' - though remember SSL is now common in phishing too." }
+                                        ].map((item, i) => (
+                                            <li key={i} className="flex gap-4">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-2 shrink-0" />
+                                                <div>
+                                                    <p className="text-xs font-black text-slate-800 uppercase tracking-tighter leading-tight mb-1">{item.title}</p>
+                                                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed">{item.text}</p>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

@@ -147,7 +147,7 @@ const Login = ({ onLoginSuccess }) => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-primary hover:bg-slate-800 hover:text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transform active:scale-95 transition-all shadow-lg shadow-slate-900/10 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+                            className="w-full bg-white hover:bg-slate-800 hover:text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transform active:scale-95 transition-all shadow-lg shadow-slate-900/10 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
                         >
                             {loading ? <Loader2 size={20} className="animate-spin" /> : (isLogin ? 'ACCESS DASHBOARD' : 'CREATE ACCOUNT')}
                         </button>

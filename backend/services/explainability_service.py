@@ -6,41 +6,62 @@ class ExplainabilityService:
     def _ensure_explainer(self):
         if self.explainer is None:
             import shap
+            import logging
+            inner_logger = logging.getLogger("shap")
+            inner_logger.setLevel(logging.ERROR) # Suppress shap warnings
+            
+            self.model_service._ensure_loaded()
             print("Initializing Neuro-Diagnostic Engine (SHAP)...")
-            self.explainer = shap.Explainer(
-                self.model_service.get_pipeline_callback(),
-                self.model_service.tokenizer # This will be loaded by callback if not yet
-            )
-            print("Diagnostic Engine ready.")
+            try:
+                # Use a proper Text masker for BERT models to ensure stable tokenization
+                masker = shap.maskers.Text(self.model_service.tokenizer)
+                self.explainer = shap.Explainer(
+                    self.model_service.get_pipeline_callback(),
+                    masker=masker,
+                    output_names=["Legitimate", "Phishing"]
+                )
+                print("Diagnostic Engine ready.")
+            except Exception as e:
+                print(f"SHAP Initialization failed: {e}")
+                # We'll try to re-init on next call if it failed
+                self.explainer = None
 
     async def get_explanation(self, text: str):
-        self._ensure_explainer()
         import asyncio
         import numpy as np
+        import logging
+        
         try:
-            # Wrap the CPU-intensive SHAP calculation in a thread to keep FastAPI responsive
+            self._ensure_explainer()
+            if self.explainer is None:
+                raise RuntimeError("SHAP explainer not initialized")
+                
+            # Wrap the CPU-intensive SHAP calculation in a thread
             loop = asyncio.get_event_loop()
+            # Increase max_evals for better resolution if needed, but 100 is usually enough for testing
             shap_values = await loop.run_in_executor(None, lambda: self.explainer([text]))
             
-            # Use safety checks for indexing
-            if not shap_values or len(shap_values.data) == 0:
-                raise ValueError("SHAP explainer returned empty values")
+            if shap_values is None or len(shap_values.values) == 0:
+                raise ValueError("SHAP returned no values")
 
-            words = shap_values.data[0].tolist()
-            # Ensure we have at least 2 classes for indexing [:, 1]
-            # If binary classification returns only 1 output, handle accordingly
-            if shap_values.values[0].shape[-1] > 1:
-                importances = shap_values.values[0][:, 1].tolist()
-                base_value = float(shap_values.base_values[0][1])
+            # Explanation object indexing: shap_values[batch_idx, token_idx, class_idx]
+            # We want the 'Phishing' class (index 1)
+            vals = shap_values.values[0]
+            base_vals = shap_values.base_values[0]
+            data = shap_values.data[0]
+
+            if len(vals.shape) > 1 and vals.shape[-1] > 1:
+                importances = vals[:, 1].tolist()
+                base_value = float(base_vals[1])
             else:
-                importances = shap_values.values[0].flatten().tolist()
-                base_value = float(shap_values.base_values[0])
+                importances = vals.flatten().tolist()
+                base_value = float(base_vals)
 
-            # Filter and clean up tokens (remove special tokens for cleaner UI)
             features = []
-            for word, imp in zip(words, importances):
-                clean_word = word.strip()
-                if clean_word and clean_word not in ["[CLS]", "[SEP]", "[PAD]", "##"]:
+            for word, imp in zip(data, importances):
+                clean_word = str(word).strip()
+                # Skip padding or empty tokens
+                if clean_word and clean_word not in ["[PAD]", "[CLS]", "[SEP]"]:
                     features.append({"token": clean_word, "score": float(imp)})
 
             # Sort by absolute impact
@@ -49,13 +70,15 @@ class ExplainabilityService:
             return {
                 "top_features": features[:12],
                 "base_value": base_value,
-                "all_tokens": words,
-                "all_scores": importances
+                "status": "success"
             }
         except Exception as e:
-            # Fallback for when SHAP fails but we want the app to stay alive
+            import traceback
+            print(f"SHAP Error for text '{text[:50]}...':")
+            traceback.print_exc()
             return {
                 "top_features": [{"token": "Diagnostic Error", "score": 0}],
                 "base_value": 0,
-                "error": str(e)
+                "error": str(e),
+                "status": "error"
             }

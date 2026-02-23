@@ -49,7 +49,7 @@ const injectScanButton = (container, textSource, subject) => {
             // 1. Get Prediction
             const predRes = await fetch(`${API_BASE}/predict`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ text: emailContent })
             });
             const data = await predRes.json();
