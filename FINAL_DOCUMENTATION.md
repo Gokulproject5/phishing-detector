@@ -55,9 +55,8 @@ graph TD
 | **Backend** | Python, FastAPI, SQLAlchemy, Pydantic |
 | **Database** | PostgreSQL (Prod), SQLite (Local) |
 | **Machine Learning** | Transformers (BERT), SHAP, Scikit-learn, PyTorch/TensorFlow |
-| **Generative AI** | Google Gemini 1.5 Flash API |
-| **Auth** | OAuth2 with JWT (JSON Web Tokens) |
-| **Deployment** | Docker, Render.com, Vercel/Netlify |
+
+
 
 ---
 

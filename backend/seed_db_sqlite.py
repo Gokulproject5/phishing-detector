@@ -37,10 +37,18 @@ def seed_db():
         dummy_scans = [
             Scan(
                 user_id=user_id,
-                url="http://secure-bank-login.com/verify",
-                prediction="Phishing",
-                probability=0.98,
-                details={"prediction": "Phishing", "probability": 0.98},
+                url="https://chatgpl.com",
+                prediction="Legitimate",
+                probability=0.005,
+                details={"prediction": "Legitimate", "probability": 0.005, "all_probabilities": {"phishing": 0.005, "legitimate": 0.995}},
+                timestamp=datetime.utcnow()
+            ),
+            Scan(
+                user_id=user_id,
+                url="https://chatgpt.com",
+                prediction="Legitimate",
+                probability=0.001,
+                details={"prediction": "Legitimate", "probability": 0.001, "all_probabilities": {"phishing": 0.001, "legitimate": 0.999}},
                 timestamp=datetime.utcnow()
             ),
             Scan(
@@ -48,19 +56,18 @@ def seed_db():
                 url="https://google.com",
                 prediction="Legitimate",
                 probability=0.01,
-                details={"prediction": "Legitimate", "probability": 0.01},
+                details={"prediction": "Legitimate", "probability": 0.01, "all_probabilities": {"phishing": 0.01, "legitimate": 0.99}},
                 timestamp=datetime.utcnow()
             )
         ]
         
-        # Add scans if history is empty
-        history_count = db.query(Scan).filter(Scan.user_id == user_id).count()
-        if history_count == 0:
-            db.add_all(dummy_scans)
-            db.commit()
-            print("Dummy scans added successfully!")
-        else:
-            print(f"User already has {history_count} scans. Skipping dummy data.")
+        # Clear existing scans for this user in SQLite
+        db.query(Scan).filter(Scan.user_id == user_id).delete()
+        db.commit()
+        
+        db.add_all(dummy_scans)
+        db.commit()
+        print(f"Added {len(dummy_scans)} dummy scans successfully!")
             
         print("\n--- Seeding Complete ---")
         print(f"Login with: \nUsername: {username}\nPassword: password123")

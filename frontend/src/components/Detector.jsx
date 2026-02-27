@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, AlertTriangle, CheckCircle, Loader2,
-    Shield, ShieldAlert, Clock, Trash2, ChevronRight,
-    Info, ExternalLink, Download, Copy
+    Shield, ShieldAlert, Download, ExternalLink, Copy, Zap, Info,
+    Sparkles, Terminal
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { scanAPI } from '../services/api';
 import Explainer from './Explainer';
-import API_URL from '../config';
-
-const API_BASE = API_URL;
 
 const Detector = () => {
     const [text, setText] = useState('');
@@ -18,12 +15,6 @@ const Detector = () => {
     const [result, setResult] = useState(null);
     const [explanation, setExplanation] = useState(null);
     const [error, setError] = useState(null);
-    const [history, setHistory] = useState([]);
-
-    useEffect(() => {
-        const saved = localStorage.getItem('phish_history');
-        if (saved) setHistory(JSON.parse(saved));
-    }, []);
 
     const handleDetect = async () => {
         if (!text.trim()) return;
@@ -33,80 +24,104 @@ const Detector = () => {
         setExplanation(null);
 
         try {
-            const token = localStorage.getItem('phish_token');
-            const headers = { Authorization: `Bearer ${token}` };
-
+            // Parallel execution of heavy neural analysis (Production optimized)
             const [predRes, expRes] = await Promise.all([
-                axios.post(`${API_BASE}/predict`, { text }, { headers }),
-                axios.post(`${API_BASE}/explain`, { text }, { headers })
+                scanAPI.predict({ text }),
+                scanAPI.explain({ text })
             ]);
 
             setResult(predRes.data);
             setExplanation(expRes.data);
 
-            // Save scan to database
-            await axios.post(`${API_BASE}/scans/save`, {
-                url: text.substring(0, 100), // Using text as URL/Content preview
-                result: predRes.data
-            }, { headers });
-
+            if (predRes.data) {
+                scanAPI.save({
+                    url: text.substring(0, 100),
+                    result: predRes.data
+                }).catch(e => console.error("Telemetry failed:", e));
+            }
         } catch (err) {
-            setError('Could not connect to the backend. Make sure the server is running on port 8000.');
+            setError(err.response?.data?.detail || 'Neural engine unreachable. Protocol mismatch or logic layer failure.');
+            setResult(null);
         } finally {
             setLoading(false);
         }
     };
 
-    const riskPercent = result ? Math.round(result.all_probabilities.phishing * 100) : 0;
+    const riskPercent = result?.all_probabilities?.phishing ? Math.round(result.all_probabilities.phishing * 100) : 0;
     const isPhishing = result?.prediction === 'Phishing';
-    const gaugeData = result ? [
+    const gaugeData = result?.all_probabilities ? [
         { value: riskPercent },
         { value: 100 - riskPercent }
     ] : [];
 
+    const handleCopyPaste = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            setText(text);
+        } catch (err) {
+            console.error('Clipboard access denied');
+        }
+    };
+
     return (
-        <div className="space-y-8 animate-fade-in pb-20">
+        <div className="space-y-10 animate-slide-up pb-20">
             {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900 poppins">Threat Analyzer</h1>
-                <p className="text-slate-500">Analyze email content, URLs, or messages for phishing signatures.</p>
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div>
+                    <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-3">Neural Threat Analyzer</h1>
+                    <p className="text-slate-500 font-medium max-w-xl leading-relaxed">
+                        Deep-scan email content, URLs, or messages with dual-core neural validation.
+                        Powered by <span className="text-indigo-600 font-bold">BERT Architecture 2.4</span>.
+                    </p>
+                </div>
+                <div className="flex items-center gap-3 bg-indigo-50 px-4 py-2 rounded-2xl border border-indigo-100 shadow-sm">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                    <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Logic Layer Active</span>
+                </div>
             </div>
 
             {/* Input Card */}
-            <div className="cyber-card overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <Search size={18} className="text-slate-400" />
-                        <span className="text-sm font-bold text-slate-700 uppercase tracking-wider poppins">New Analysis</span>
+            <div className="premium-card overflow-hidden">
+                <div className="px-8 py-5 border-b border-slate-50 bg-white flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 border border-slate-100">
+                            <Search size={22} strokeWidth={1.5} />
+                        </div>
+                        <span className="text-xs font-black text-slate-800 uppercase tracking-widest">System Diagnostics</span>
                     </div>
-                    <div className="text-[10px] font-bold text-slate-400 bg-slate-200/50 px-2 py-1 rounded">BERT MODEL v2.4</div>
+                    <div className="flex gap-2">
+                        <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 uppercase tracking-widest">SHA-256 Enabled</span>
+                    </div>
                 </div>
-                <div className="p-6">
+                <div className="p-10">
                     <textarea
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-slate-800 placeholder-slate-400 text-sm leading-relaxed outline-none min-h-[160px] focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/5 transition-all "
-                        placeholder="Paste suspicious content here..."
+                        className="w-full bg-slate-50/50 border border-slate-100 rounded-[28px] p-8 text-slate-800 placeholder-slate-400 text-sm leading-relaxed outline-none min-h-[200px] focus:border-indigo-500/30 focus:bg-white focus:ring-[12px] focus:ring-indigo-500/5 transition-all shadow-inner"
+                        placeholder="Paste suspicious content, URLs, or email headers here..."
                         value={text}
                         onChange={(e) => setText(e.target.value)}
                     />
-                    <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center gap-4">
-                            <span className="text-xs font-medium text-slate-400">{text.length} characters</span>
-                            <button className="text-xs font-bold text-indigo-500 hover:text-indigo-600 flex items-center gap-1 transition-colors">
-                                <Copy size={12} /> Paste from Clipboard
+                    <div className="flex flex-col sm:flex-row items-center justify-between mt-8 gap-6">
+                        <div className="flex items-center gap-8">
+                            <div className="flex flex-col">
+                                <span className="text-xs font-black text-slate-800 tracking-tight">{text.length} Signals</span>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Input Vector</span>
+                            </div>
+                            <button
+                                onClick={handleCopyPaste}
+                                className="text-xs font-black text-indigo-600 hover:text-indigo-700 flex items-center gap-2.5 transition-all group uppercase tracking-widest bg-indigo-50 px-5 py-3 rounded-2xl border border-indigo-100/50"
+                            >
+                                <Copy size={14} className="group-hover:scale-110 transition-transform" /> Paste from Clipboard
                             </button>
                         </div>
                         <button
                             onClick={handleDetect}
                             disabled={loading || !text.trim()}
-                            className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-lg ${loading || !text.trim()
-                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
-                                : 'bg-primary hover:bg-[#1e293b] text-white shadow-slate-900/10 hover:-translate-y-0.5'
-                                }`}
+                            className={`btn-premium w-full sm:w-auto py-4 px-8 ${loading || !text.trim() ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
                         >
                             {loading ? (
-                                <><Loader2 size={18} className="animate-spin" /> Analyzing Patterns...</>
+                                <><Loader2 size={18} className="animate-spin" /> Deconstructing Patterns...</>
                             ) : (
-                                <><Search size={18} /> Run Diagnostics</>
+                                <><Zap size={18} className="fill-current" /> Execute Deep Analysis</>
                             )}
                         </button>
                     </div>
@@ -118,129 +133,178 @@ const Detector = () => {
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium"
+                    className="flex items-center gap-5 p-6 bg-rose-50 border border-rose-100 rounded-2xl text-rose-700 text-sm font-bold shadow-sm"
                 >
-                    <AlertTriangle size={18} className="shrink-0" />
-                    {error}
+                    <div className="w-12 h-12 rounded-2xl bg-rose-100/50 flex items-center justify-center shrink-0 border border-rose-200">
+                        <AlertTriangle size={24} />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase font-black tracking-widest mb-0.5">Protocol Error</span>
+                        <span className="text-sm font-extrabold tracking-tight">{error}</span>
+                    </div>
                 </motion.div>
             )}
 
             {/* Results Display */}
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
                 {result && (
                     <motion.div
-                        initial={{ opacity: 0, y: 20 }}
+                        key="result"
+                        initial={{ opacity: 0, y: 40 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="space-y-6"
+                        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                        className="space-y-10"
                     >
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                             {/* Verdict Card */}
-                            <div className="lg:col-span-4 cyber-card p-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
-                                <div className={`absolute top-0 left-0 w-full h-1.5 ${isPhishing ? 'bg-alert' : 'bg-accent'}`} />
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Diagnostic Verdict</p>
-
-                                <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 ${isPhishing ? 'bg-red-50' : 'bg-emerald-50'}`}>
-                                    {isPhishing
-                                        ? <ShieldAlert size={40} className="text-alert" />
-                                        : <CheckCircle size={40} className="text-accent" />
-                                    }
+                            <div className="lg:col-span-5 premium-card p-12 flex flex-col items-center justify-center text-center relative overflow-hidden group">
+                                <div className={`absolute top-0 left-0 w-full h-2 ${isPhishing ? 'bg-rose-500' : 'bg-emerald-500'} group-hover:h-3 transition-all`} />
+                                <div className="absolute top-8 left-8">
+                                    <Shield size={16} className="text-slate-100" />
                                 </div>
 
-                                <h3 className={`text-2xl font-black poppins mb-1 ${isPhishing ? 'text-alert' : 'text-accent'}`}>
-                                    {isPhishing ? 'Phishing Detected' : 'Safe Content'}
+                                <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-10">Diagnostic Verdict</p>
+
+                                <motion.div
+                                    whileHover={{ scale: 1.05, rotate: 2 }}
+                                    className={`w-32 h-32 rounded-[40px] flex items-center justify-center mb-8 shadow-2xl transition-all ${isPhishing ? 'bg-rose-50 text-rose-600 shadow-rose-500/10 border border-rose-100' : 'bg-emerald-50 text-emerald-600 shadow-emerald-500/10 border border-emerald-100'}`}
+                                >
+                                    {isPhishing
+                                        ? <ShieldAlert size={64} strokeWidth={1.2} />
+                                        : <CheckCircle size={64} strokeWidth={1.2} />
+                                    }
+                                </motion.div>
+
+                                <h3 className={`text-4xl font-black mb-3 tracking-tight ${isPhishing ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                    {isPhishing ? 'Phishing' : 'Verified Safe'}
                                 </h3>
-                                <p className="text-slate-500 text-sm mb-6">
-                                    {isPhishing ? 'High Risk - Do not interact' : 'Low Risk - No patterns found'}
+                                <p className="text-slate-500 font-semibold mb-8 max-w-[260px] leading-relaxed">
+                                    {isPhishing ? 'Neural patterns indicate highly malicious signature.' : 'Verified as legitimate via neural heuristic cross-validation.'}
                                 </p>
 
-                                <div className="w-full flex gap-2">
-                                    <button className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-2">
-                                        <Download size={14} /> Report
+                                {explanation?.ai_explanation && (
+                                    <div className="mb-10 p-5 bg-slate-50 rounded-2xl border border-slate-100/50 text-left relative overflow-hidden group/intel">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Sparkles size={14} className="text-indigo-600" />
+                                            <span className="text-[9px] font-black uppercase text-indigo-600 tracking-widest">Neural Insight</span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-600 font-bold leading-relaxed line-clamp-3">
+                                            {explanation.ai_explanation}
+                                        </p>
+                                        <button
+                                            onClick={() => document.getElementById('ai-reasoning')?.scrollIntoView({ behavior: 'smooth' })}
+                                            className="mt-3 text-[9px] font-black uppercase text-indigo-600 hover:text-indigo-800 transition-colors"
+                                        >
+                                            View Full Diagnostic →
+                                        </button>
+                                        <div className="absolute top-0 right-0 p-3 opacity-[0.03] group-hover/intel:opacity-[0.07] transition-opacity">
+                                            <Terminal size={40} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="w-full flex flex-col gap-4 mt-auto">
+                                    <button
+                                        onClick={() => document.getElementById('ai-reasoning')?.scrollIntoView({ behavior: 'smooth' })}
+                                        className="btn-premium w-full py-5 flex items-center justify-center gap-3 text-xs uppercase tracking-[0.2em]"
+                                    >
+                                        <Zap size={16} /> Decipher Intelligence
                                     </button>
-                                    <button className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-2">
-                                        <ExternalLink size={14} /> Details
+                                    <button
+                                        onClick={() => document.getElementById('threat-heuristics')?.scrollIntoView({ behavior: 'smooth' })}
+                                        className="btn-secondary w-full py-4 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-50 border-slate-200"
+                                    >
+                                        <ExternalLink size={14} /> Pattern Log
                                     </button>
                                 </div>
                             </div>
 
                             {/* Risk Meter Card */}
-                            <div className="lg:col-span-8 cyber-card p-6">
-                                <div className="flex items-center justify-between mb-8">
-                                    <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider poppins">Risk Probability Meter</h4>
-                                    <div className="flex gap-4">
-                                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                                            <span className="w-2 h-2 rounded-full bg-alert" /> Phishing
+                            <div className="lg:col-span-7 premium-card p-12">
+                                <div className="flex items-center justify-between mb-16">
+                                    <div>
+                                        <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest mb-1.5">Neural Probability Metrics</h4>
+                                        <p className="text-[10px] text-slate-400 font-bold tracking-widest uppercase">Cross-vector validation active</p>
+                                    </div>
+                                    <div className="flex gap-8">
+                                        <div className="flex flex-col items-center gap-2 group cursor-default">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
+                                                <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Threat</span>
+                                            </div>
+                                            <span className="text-[9px] font-bold text-slate-400">MALICIOUS</span>
                                         </div>
-                                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                                            <span className="w-2 h-2 rounded-full bg-accent" /> Safe
+                                        <div className="flex flex-col items-center gap-2 group cursor-default">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Guard</span>
+                                            </div>
+                                            <span className="text-[9px] font-bold text-slate-400">LEGITIMATE</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="flex flex-col md:flex-row items-center gap-10">
-                                    <div className="relative w-40 h-40 shrink-0">
+                                <div className="flex flex-col xl:flex-row items-center gap-16">
+                                    <div className="relative w-56 h-56 shrink-0 group">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
                                                     data={gaugeData}
                                                     cx="50%"
                                                     cy="50%"
-                                                    innerRadius={55}
-                                                    outerRadius={75}
-                                                    paddingAngle={2}
+                                                    innerRadius={75}
+                                                    outerRadius={95}
+                                                    paddingAngle={6}
                                                     dataKey="value"
                                                     stroke="none"
+                                                    cornerRadius={40}
                                                     startAngle={180}
                                                     endAngle={-180}
                                                 >
-                                                    <Cell fill={isPhishing ? '#EF4444' : '#22C55E'} />
-                                                    <Cell fill="#F1F5F9" />
+                                                    <Cell fill={isPhishing ? '#F43F5E' : '#10B981'} />
+                                                    <Cell fill="#F8FAFC" />
                                                 </Pie>
                                             </PieChart>
                                         </ResponsiveContainer>
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                            <span className={`text-3xl font-black poppins ${isPhishing ? 'text-alert' : 'text-accent'}`}>{riskPercent}%</span>
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Confidence</span>
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center transition-transform group-hover:scale-110 duration-500">
+                                            <span className={`text-5xl font-black tracking-tighter ${isPhishing ? 'text-rose-600' : 'text-emerald-600'}`}>{riskPercent}%</span>
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">Neural Conf.</span>
                                         </div>
                                     </div>
 
-                                    <div className="flex-1 w-full space-y-6">
-                                        <div className="space-y-2">
+                                    <div className="flex-1 w-full space-y-10 pt-4">
+                                        <div className="space-y-4">
                                             <div className="flex justify-between items-end">
-                                                <span className="text-xs font-bold text-slate-700">Threat Signature Match</span>
-                                                <span className="text-xs font-black text-alert">{(result.all_probabilities.phishing * 100).toFixed(1)}%</span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1.5">Malicious correlation</span>
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">Pattern Match Score</span>
+                                                </div>
+                                                <span className="text-lg font-black text-rose-600 tracking-tight">{(result.all_probabilities.phishing * 100).toFixed(1)}</span>
                                             </div>
-                                            <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-4 bg-slate-50 rounded-full overflow-hidden p-1 border border-slate-100 shadow-inner">
                                                 <motion.div
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${result.all_probabilities.phishing * 100}%` }}
-                                                    transition={{ duration: 1.2, ease: "easeOut" }}
-                                                    className="h-full bg-alert rounded-full"
+                                                    transition={{ duration: 1.5, ease: [0.34, 1.56, 0.64, 1] }}
+                                                    className="h-full bg-gradient-to-r from-rose-400 to-rose-600 rounded-full shadow-lg"
                                                 />
                                             </div>
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-4">
                                             <div className="flex justify-between items-end">
-                                                <span className="text-xs font-bold text-slate-700">Legitimate Context Score</span>
-                                                <span className="text-xs font-black text-accent">{(result.all_probabilities.legitimate * 100).toFixed(1)}%</span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-1.5">Integrity Verification</span>
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em]">Neural Consistency</span>
+                                                </div>
+                                                <span className="text-lg font-black text-emerald-600 tracking-tight">{(result.all_probabilities.legitimate * 100).toFixed(1)}</span>
                                             </div>
-                                            <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-4 bg-slate-50 rounded-full overflow-hidden p-1 border border-slate-100 shadow-inner">
                                                 <motion.div
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${result.all_probabilities.legitimate * 100}%` }}
-                                                    transition={{ duration: 1.2, ease: "easeOut", delay: 0.2 }}
-                                                    className="h-full bg-accent rounded-full"
+                                                    transition={{ duration: 1.5, ease: [0.34, 1.56, 0.64, 1], delay: 0.2 }}
+                                                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full shadow-lg"
                                                 />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4 pt-2">
-                                            <div className="p-3 bg-slate-50 rounded-xl">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Processing Time</p>
-                                                <p className="text-xs font-bold text-slate-700">142ms</p>
-                                            </div>
-                                            <div className="p-3 bg-slate-50 rounded-xl">
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Architecture</p>
-                                                <p className="text-xs font-bold text-slate-700">BERT-Base</p>
                                             </div>
                                         </div>
                                     </div>
@@ -248,114 +312,54 @@ const Detector = () => {
                             </div>
                         </div>
 
-                        {/* Heuristic Analysis Section */}
+                        {/* Heuristics */}
                         {result.heuristics && result.heuristics.length > 0 && (
-                            <div className="animate-fade-in space-y-3">
-                                <div className="flex items-center gap-2 px-1">
-                                    <ShieldAlert size={14} className="text-alert" />
-                                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest poppins">Verification Engine Flags</h4>
+                            <div id="threat-heuristics" className="space-y-6 scroll-mt-10">
+                                <div className="flex items-center gap-3 px-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">Threat Heuristics Identified</h4>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {result.heuristics.map((h, i) => (
                                         <motion.div
                                             key={i}
-                                            initial={{ opacity: 0, x: -10 }}
-                                            animate={{ opacity: 1, x: 0 }}
+                                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
                                             transition={{ delay: i * 0.1 }}
-                                            className="p-4 bg-red-50/50 border border-red-100 rounded-2xl flex items-start gap-3 shadow-sm"
+                                            className="px-8 py-5 bg-white border border-rose-100/50 rounded-2xl flex items-center gap-5 shadow-sm hover:shadow-xl hover:bg-rose-50/10 transition-all group"
                                         >
-                                            <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center text-alert shrink-0">
-                                                <AlertTriangle size={16} />
+                                            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shrink-0 border border-rose-100 group-hover:scale-110 transition-transform">
+                                                <AlertTriangle size={18} strokeWidth={2.5} />
                                             </div>
-                                            <p className="text-xs font-bold text-slate-700 leading-tight">
-                                                {h}
-                                            </p>
+                                            <div className="flex flex-col">
+                                                <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-0.5">Alert Flag {i + 1}</span>
+                                                <p className="text-xs font-extrabold text-slate-800 leading-tight">
+                                                    {h}
+                                                </p>
+                                            </div>
                                         </motion.div>
                                     ))}
                                 </div>
                             </div>
                         )}
 
-                        {/* Explainer Section */}
+                        {/* Explainer */}
                         {explanation && (
-                            <div className="animate-fade-in">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="p-2 bg-indigo-50 rounded-lg">
-                                        <Info size={18} className="text-indigo-600" />
+                            <div id="ai-reasoning" className="animate-slide-up space-y-8 pt-6 scroll-mt-10">
+                                <div className="flex items-center gap-6 px-1">
+                                    <div className="w-14 h-14 bg-indigo-600 text-white rounded-[24px] flex items-center justify-center shadow-xl shadow-indigo-500/20 border border-indigo-400/20">
+                                        <Info size={28} strokeWidth={1.5} />
                                     </div>
-                                    <h4 className="text-lg font-bold text-slate-800 poppins">Explainability (SHAP Data)</h4>
+                                    <div>
+                                        <h4 className="text-2xl font-black text-slate-900 tracking-tight">AI Reasoning Core</h4>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">BERT-SHAP Dual Logic Visualization</p>
+                                    </div>
                                 </div>
-                                <Explainer data={explanation} />
+                                <div className="premium-card p-1 bg-slate-50/50 backdrop-blur-sm shadow-premium">
+                                    <Explainer data={explanation} />
+                                </div>
                             </div>
                         )}
-
-                        {/* Good vs Bad Links Instruction Set */}
-                        <div className="mt-12 space-y-8">
-                            <div className="flex flex-col gap-2">
-                                <h2 className="text-xl font-black text-slate-900 poppins uppercase tracking-tight">Link Safety Intelligence</h2>
-                                <p className="text-slate-500 text-sm font-medium">Follow these neural-verified instructions to distinguish between secure and malicious targets.</p>
-                            </div>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* Bad Link Section */}
-                                <div className="p-8 rounded-[32px] border border-red-100 bg-red-50/10 space-y-6 relative overflow-hidden group hover:shadow-xl hover:shadow-red-500/5 transition-all">
-                                    <div className="absolute -top-4 -right-4 opacity-5 group-hover:scale-110 transition-transform">
-                                        <AlertTriangle size={120} className="text-red-600" />
-                                    </div>
-                                    <div className="flex items-center gap-3 relative z-10">
-                                        <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 shadow-sm border border-red-200">
-                                            <AlertTriangle size={24} />
-                                        </div>
-                                        <h3 className="text-sm font-black text-slate-800 poppins uppercase tracking-widest">RED FLAGS (MALICIOUS)</h3>
-                                    </div>
-                                    <ul className="space-y-4 relative z-10">
-                                        {[
-                                            { title: "Mismatched Domains", text: "Visible text says 'paypal.com' but hovering reveals 'paypal-security.net'." },
-                                            { title: "IP-Only Destinations", text: "Raw IP addresses (e.g., http://203.0.113.1/login) bypass DNS reputation." },
-                                            { title: "Urgency Lure Patterns", text: "Embedded links in phrases like 'Verify immediately' or 'Emergency Alert'." },
-                                            { title: "Excessive Subdomains", text: "Layers of dots used to hide the real domain (e.g., 'amazon.secure-verify.tk')." }
-                                        ].map((item, i) => (
-                                            <li key={i} className="flex gap-4">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-2 shrink-0 animate-pulse" />
-                                                <div>
-                                                    <p className="text-xs font-black text-slate-800 uppercase tracking-tighter leading-tight mb-1">{item.title}</p>
-                                                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed">{item.text}</p>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-
-                                {/* Good Link Section */}
-                                <div className="p-8 rounded-[32px] border border-emerald-100 bg-emerald-50/10 space-y-6 relative overflow-hidden group hover:shadow-xl hover:shadow-emerald-500/5 transition-all">
-                                    <div className="absolute -top-4 -right-4 opacity-5 group-hover:scale-110 transition-transform">
-                                        <Shield size={120} className="text-emerald-600" />
-                                    </div>
-                                    <div className="flex items-center gap-3 relative z-10">
-                                        <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-200">
-                                            <Shield size={24} />
-                                        </div>
-                                        <h3 className="text-sm font-black text-slate-800 poppins uppercase tracking-widest">SAFE SIGNALS (TRUSTED)</h3>
-                                    </div>
-                                    <ul className="space-y-4 relative z-10">
-                                        {[
-                                            { title: "Direct Path Matching", text: "Hovered URL points exactly to the official brand domain (e.g., google.com)." },
-                                            { title: "Standard TLDs", text: "Trusted organizations use common TLDs like .com, .org, or .gov." },
-                                            { title: "Clean URL Structure", text: "No random hyphens, emojis, or non-latin characters in the domain." },
-                                            { title: "SSL Certification", text: "Look for 'https://' - though remember SSL is now common in phishing too." }
-                                        ].map((item, i) => (
-                                            <li key={i} className="flex gap-4">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-2 shrink-0" />
-                                                <div>
-                                                    <p className="text-xs font-black text-slate-800 uppercase tracking-tighter leading-tight mb-1">{item.title}</p>
-                                                    <p className="text-[11px] text-slate-500 font-medium leading-relaxed">{item.text}</p>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

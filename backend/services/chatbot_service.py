@@ -98,8 +98,11 @@ class ChatbotService:
         prompt = (
             f"A machine learning model detected this text as '{prediction}'. "
             f"The suspicious features identified are: {feature_str}. "
-            "Please explain in simple terms why these words might indicate a phishing attempt "
-            "and give 3 quick safety tips."
+            "Please provide a detailed security diagnostic with a specific focus balance: "
+            "1. (90% of your response) Explain in depth why these words and patterns indicate a dangerous phishing attempt, "
+            "focusing on psychological manipulation, urgency, and technical red flags. "
+            "2. (10% of your response) Briefly mention what a safe version of this message might look like or any minor 'legit' markers. "
+            "Conclude with 3 quick tactical safety tips."
         )
         
         try:
@@ -112,10 +115,12 @@ class ChatbotService:
     def _get_fallback_explanation(self, prediction: str, top_features: list):
         is_phish = prediction == "Phishing"
         if is_phish:
-            return ("The system identified urgency and authority markers typical of phishing. "
-                    "The top suspicious patterns found involve requests for immediate action or sensitive information. "
-                    "Safety Tips: 1. Do not click links. 2. Verify sender address. 3. Report to IT.")
+            return ("CRITICAL THREAT ANALYSIS (90% Focus): The neural core identified multiple high-risk social engineering markers. "
+                    "The combination of linguistic urgency and suspicious feature patterns indicates a coordinated attempt to bypass your security filters. "
+                    "These patterns are designed to trigger fear and bypass logical reasoning. "
+                    "SAFETY MARGIN (10% Focus): While the message structure might mimic legitimate layouts, the underlying metadata is compromised. "
+                    "Tactical Safety Tips: 1. Do not click links. 2. Verify sender address. 3. Report to IT.")
         else:
-            return ("The message content aligns with legitimate communication patterns. "
-                    "No significant threat vectors were identified by the Neural Engine. "
-                    "Always remain vigilant even with safe ratings.")
+            return ("LEGITIMATE NEURAL MATCH: The message content aligns with verified communication patterns. "
+                    "No significant malicious vectors were identified in the primary layer. "
+                    "Always remain vigilant as sophisticated threats can occasionally mimic safe signatures.")

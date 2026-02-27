@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { motion } from 'framer-motion';
-import API_URL from '../config';
 import {
     Zap,
     Shield,
@@ -12,20 +10,23 @@ import {
     ArrowUpRight,
     Activity
 } from 'lucide-react';
+import { scanAPI } from '../services/api';
 
 const StatCard = ({ label, value, icon: Icon, color, trend }) => (
-    <div className="cyber-card p-6 flex items-start justify-between">
-        <div>
-            <p className="text-sm font-medium text-slate-500 mb-1">{label}</p>
-            <h3 className="text-2xl font-bold text-slate-900 poppins">{value}</h3>
+    <div className="premium-card p-8 group hover:scale-[1.02] transition-all duration-500 bg-white">
+        <div className="flex items-start justify-between mb-6">
+            <div className={`w-14 h-14 rounded-2xl ${color} bg-opacity-10 flex items-center justify-center text-${color.split('-')[1]}-600 group-hover:rotate-12 transition-transform duration-500 border border-${color.split('-')[1]}-100/50`}>
+                <Icon size={28} strokeWidth={1.5} />
+            </div>
             {trend && (
-                <p className="text-xs font-semibold text-emerald-500 mt-2 flex items-center gap-1">
-                    <ArrowUpRight size={12} /> {trend}
-                </p>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+                    <ArrowUpRight size={14} /> {trend}
+                </div>
             )}
         </div>
-        <div className={`p-3 rounded-xl ${color} bg-opacity-10`}>
-            <Icon size={24} className={color.replace('bg-', 'text-')} />
+        <div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{label}</p>
+            <h3 className="text-3xl font-black text-slate-900 tracking-tight">{value}</h3>
         </div>
     </div>
 );
@@ -43,117 +44,131 @@ const DashboardHome = ({ onNavigateToAnalyze, user }) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const token = localStorage.getItem('phish_token');
-                if (!token) return;
                 const [statsRes, intelRes] = await Promise.all([
-                    axios.get(`${API_URL}/stats`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    }),
-                    axios.get(`${API_URL}/api/threats/intel`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    })
+                    scanAPI.getStats(),
+                    scanAPI.getIntel()
                 ]);
                 setStats(statsRes.data);
                 setIntel(intelRes.data);
             } catch (err) {
-                console.error('Data fetch failed', err);
+                console.error('Data telemetry failed:', err);
             }
         };
         fetchData();
     }, []);
 
     return (
-        <div className="space-y-8 animate-fade-in">
-            {/* Hero Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-12 animate-slide-up pb-20">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 poppins mb-2">
-                        Welcome Back, {user?.full_name || 'Security Analyst'}
+                    <h1 className="text-5xl font-extrabold text-slate-900 tracking-tight mb-4 leading-tight">
+                        Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-800">{user?.full_name?.split(' ')[0] || 'Analyst'}</span>
                     </h1>
-                    <p className="text-slate-500">Your PhishGuard system is active and monitoring neural patterns.</p>
+                    <p className="text-slate-500 font-medium max-w-xl text-lg leading-relaxed">
+                        Your PhishGuard core is actively deconstructing threats across across all neural vectors. Status: <span className="text-emerald-600 font-bold">Optimized</span>.
+                    </p>
                 </div>
-                <div className="flex gap-3">
-                    <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border ${stats.system_protected ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
-                        <span className={`w-2 h-2 rounded-full animate-pulse ${stats.system_protected ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                        {stats.system_protected ? 'System Protected' : 'System Alert'}
+                <div className="flex items-center gap-4">
+                    <div className="glass-box px-6 py-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 bg-white">
+                        <div className="relative">
+                            <div className={`w-3 h-3 rounded-full ${stats.system_protected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <div className={`absolute inset-0 rounded-full animate-ping opacity-25 ${stats.system_protected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                        </div>
+                        <span className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em]">
+                            {stats.system_protected ? 'Neural Shield Active' : 'Shield Interrupted'}
+                        </span>
                     </div>
                 </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 <StatCard
-                    label="Risk Score"
+                    label="Threat Index"
                     value={`${stats.risk_score}/100`}
                     icon={Activity}
-                    color="bg-orange-500"
-                    trend="Based on history"
+                    color="bg-amber-500"
+                    trend="Low Risk"
                 />
                 <StatCard
-                    label="Total Scans"
+                    label="Neural Analysis"
                     value={stats.total_scans}
                     icon={Search}
                     color="bg-indigo-500"
-                    trend="+12% this week"
+                    trend="+12% Active"
                 />
                 <StatCard
-                    label="Threats Blocked"
+                    label="Breaches Deflected"
                     value={stats.threats_blocked}
                     icon={ShieldCheck}
                     color="bg-emerald-500"
-                    trend="Real-time protection"
+                    trend="Real-time"
                 />
                 <StatCard
-                    label="Protection Level"
+                    label="Defense Tier"
                     value={stats.protection_level}
                     icon={Shield}
                     color="bg-indigo-600"
-                    trend="Active Defender"
+                    trend="Enterprise"
                 />
             </div>
 
-            {/* Main Action Card */}
-            <div className="cyber-card overflow-hidden">
-                <div className="bg-slate-900 p-8 text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-8 opacity-10">
-                        <Shield size={160} />
-                    </div>
-                    <div className="relative z-10 max-w-2xl">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 text-[10px] font-bold uppercase tracking-wider mb-4">
-                            Neural Engine v2.4 Active
-                        </div>
-                        <h2 className="text-3xl font-bold poppins mb-4">Explainable Phishing Detection</h2>
-                        <p className="text-slate-400 text-lg mb-8 leading-relaxed">
-                            Analyze suspicious emails, URLs, or messages using our advanced BERT model and understand the underlying logic with SHAP explainability.
+            {/* Hero Main Action */}
+            <div className="premium-card overflow-hidden bg-white border border-slate-50 shadow-premium group">
+                <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[450px]">
+                    <div className="lg:col-span-7 p-12 lg:p-20 flex flex-col justify-center">
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-[0.2em] mb-8 w-fit border border-indigo-100/50"
+                        >
+                            <Zap size={14} className="fill-current" />
+                            Next-Gen Explainable AI
+                        </motion.div>
+                        <h2 className="text-5xl lg:text-6xl font-black text-slate-900 mb-8 leading-[1.05] tracking-tight">
+                            Unmask threats with <br />
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-900">Explainable Logic.</span>
+                        </h2>
+                        <p className="text-slate-500 text-lg mb-12 leading-relaxed max-w-xl font-medium">
+                            Our BERT-powered neural engine goes beyond simple detection. It identifies complex phishing patterns and provides human-readable forensics for every alert.
                         </p>
                         <button
                             onClick={onNavigateToAnalyze}
-                            className="bg-accent hover:bg-emerald-500 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-3 transition-all transform hover:scale-105 active:scale-95 shadow-xl shadow-emerald-500/20"
+                            className="btn-premium w-full sm:w-auto py-5 px-10 rounded-2xl flex items-center justify-center gap-4 text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-95"
                         >
-                            <Search size={20} />
-                            Start New Analysis
+                            <Search size={22} strokeWidth={2.5} />
+                            Initiate Deep Analysis
                             <ChevronRight size={18} />
                         </button>
                     </div>
-                </div>
-                <div className="p-6 bg-slate-50 grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                            <AlertTriangle size={20} className="text-orange-600" />
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-slate-800 mb-1">Stay Alert</h4>
-                            <p className="text-sm text-slate-500 italic">"90% of data breaches start with a phishing attack. Always verify before you click."</p>
-                        </div>
+                    <div className="lg:col-span-5 bg-slate-50/50 flex items-center justify-center p-12 relative overflow-hidden">
+                        <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
+                        <motion.div
+                            animate={{
+                                rotate: [0, 5, 0, -5, 0],
+                                scale: [1, 1.05, 1]
+                            }}
+                            transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+                            className="relative z-10 p-16 bg-white rounded-[56px] shadow-2xl border-8 border-slate-50 group-hover:border-indigo-50 transition-colors duration-1000"
+                        >
+                            <Shield size={160} className="text-indigo-600 drop-shadow-2xl" strokeWidth={0.8} />
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-indigo-500/10 rounded-full blur-[100px]" />
+                        </motion.div>
                     </div>
-                    <div className="flex items-start gap-4 border-l border-slate-200 pl-8">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                            <Zap size={20} className="text-blue-600" />
+                </div>
+                <div className="bg-slate-900/5 px-12 py-8 border-t border-slate-50 flex flex-wrap gap-12 items-center">
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center border border-amber-100">
+                            <AlertTriangle size={20} className="text-amber-600" />
                         </div>
-                        <div>
-                            <h4 className="font-bold text-slate-800 mb-1">BERT Integration</h4>
-                            <p className="text-sm text-slate-500">Our model understands context, identifying subtle signs that rule-based systems miss.</p>
+                        <span className="text-xs font-black text-slate-800 uppercase tracking-widest italic opacity-60">"90% of breaches start via phishing."</span>
+                    </div>
+                    <div className="flex items-center gap-4 ml-auto">
+                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100">
+                            <Activity size={20} className="text-indigo-600" />
                         </div>
+                        <span className="text-[10px] font-black text-slate-800 uppercase tracking-[0.2em]">SHAP Logic Integrated</span>
                     </div>
                 </div>
             </div>

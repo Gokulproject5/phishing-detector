@@ -1,10 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, User, Bot, Trash2, Cpu, Sparkles, MessageSquare, Terminal, ChevronRight } from 'lucide-react';
-import API_URL from '../config';
-
-const API_BASE = API_URL;
+import { scanAPI } from '../services/api';
 
 const SUGGESTED = [
     'What are signs of a phishing email?',
@@ -13,7 +10,6 @@ const SUGGESTED = [
     'Common tech support scams',
     'Best practices for cybersecurity',
     'Spam vs Phishing: What is the difference?',
-    'How do I protect against ransomware?'
 ];
 
 const Chatbot = ({ user }) => {
@@ -39,80 +35,76 @@ const Chatbot = ({ user }) => {
         setLoading(true);
 
         try {
-            const token = localStorage.getItem('phish_token');
-            const res = await axios.post(`${API_BASE}/chat`,
-                { message: text },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const res = await scanAPI.chat({ message: text });
             setMessages(prev => [...prev, { role: 'bot', content: res.data.response }]);
         } catch {
-            setMessages(prev => [...prev, { role: 'bot', content: 'Connection error. Please ensure the backend is running on port 8000.' }]);
+            setMessages(prev => [...prev, { role: 'bot', content: 'Connection error. The neural link was interrupted.' }]);
         } finally {
             setLoading(false);
         }
     };
 
-    const showSuggestions = messages.length === 1;
-
     return (
-        <div className="flex flex-col h-[calc(100vh-140px)] animate-fade-in">
+        <div className="flex flex-col h-[calc(100vh-140px)] animate-slide-up">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-8 px-1">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 poppins">Security Assistant</h1>
-                    <p className="text-slate-500 text-sm">Real-time threat intelligence and guidance.</p>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">AI Security Oracle</h1>
+                    <p className="text-slate-500 font-medium">Real-time threat intelligence and guidance center.</p>
                 </div>
-                <button
-                    onClick={() => setMessages([messages[0]])}
-                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                    title="Clear Chat"
-                >
-                    <Trash2 size={18} />
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setMessages([messages[0]])}
+                        className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl border border-slate-100 transition-all hover:border-rose-100"
+                        title="Clear History"
+                    >
+                        <Trash2 size={20} />
+                    </button>
+                </div>
             </div>
 
-            <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-8 min-h-0">
                 {/* Chat Area */}
-                <div className="lg:col-span-3 cyber-card flex flex-col overflow-hidden bg-white">
+                <div className="lg:col-span-3 premium-card flex flex-col overflow-hidden bg-white shadow-premium">
                     {/* Message Area */}
-                    <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+                    <div ref={scrollRef} className="flex-1 overflow-y-auto p-10 space-y-8 custom-scrollbar">
                         <AnimatePresence initial={false}>
                             {messages.map((m, idx) => (
                                 <motion.div
                                     key={idx}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className={`flex gap-4 ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+                                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    className={`flex gap-5 ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
                                 >
-                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${m.role === 'user'
-                                        ? 'bg-primary text-white font-black text-xs'
-                                        : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                    <div className={`w-11 h-11 rounded-[18px] flex items-center justify-center shrink-0 shadow-sm border transition-transform hover:scale-110 ${m.role === 'user'
+                                        ? 'bg-indigo-600 text-white border-indigo-500 font-black text-sm'
+                                        : 'bg-white text-slate-600 border-slate-100'
                                         }`}>
                                         {m.role === 'user'
-                                            ? (user?.full_name?.charAt(0) || user?.username?.charAt(0) || <User size={16} />)
-                                            : <Cpu size={16} />
+                                            ? (user?.full_name?.charAt(0) || user?.username?.charAt(0) || <User size={18} />)
+                                            : <Cpu size={20} strokeWidth={1.5} />
                                         }
                                     </div>
-                                    <div className={`max-w-[75%] px-5 py-4 rounded-2xl text-sm leading-relaxed shadow-sm ${m.role === 'user'
-                                        ? 'bg-primary text-white rounded-tr-none'
-                                        : 'bg-slate-50 text-slate-700 border border-slate-100 rounded-tl-none'
+                                    <div className={`max-w-[75%] px-7 py-5 rounded-[28px] text-sm leading-relaxed shadow-sm ${m.role === 'user'
+                                        ? 'bg-indigo-600 text-white rounded-tr-none'
+                                        : 'bg-slate-50 text-slate-700 border border-slate-100/50 rounded-tl-none font-medium'
                                         }`}>
                                         {m.content}
                                     </div>
                                 </motion.div>
                             ))}
                             {loading && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4">
-                                    <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-                                        <Cpu size={16} className="text-slate-400" />
+                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-5">
+                                    <div className="w-11 h-11 rounded-[18px] bg-white border border-slate-100 flex items-center justify-center shrink-0">
+                                        <Cpu size={20} className="text-indigo-600 animate-pulse" />
                                     </div>
-                                    <div className="px-5 py-4 rounded-2xl rounded-tl-none bg-slate-50 border border-slate-100 flex items-center gap-1.5 shadow-sm">
+                                    <div className="px-7 py-5 rounded-[28px] rounded-tl-none bg-slate-50 border border-slate-100/50 flex items-center gap-1.5 shadow-sm">
                                         {[0, 1, 2].map(i => (
                                             <motion.div
                                                 key={i}
-                                                animate={{ y: [0, -4, 0] }}
-                                                transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.15 }}
-                                                className="w-1.5 h-1.5 bg-slate-400 rounded-full"
+                                                animate={{ opacity: [0.3, 1, 0.3] }}
+                                                transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
+                                                className="w-1.5 h-1.5 bg-indigo-600 rounded-full"
                                             />
                                         ))}
                                     </div>
@@ -122,11 +114,11 @@ const Chatbot = ({ user }) => {
                     </div>
 
                     {/* Input Area */}
-                    <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-                        <div className="flex gap-3 bg-white p-2 border border-slate-200 rounded-xl shadow-inner focus-within:border-indigo-500/40 focus-within:ring-4 focus-within:ring-indigo-500/5 transition-all">
+                    <div className="p-8 border-t border-slate-50 bg-slate-50/30">
+                        <div className="flex gap-4 bg-white p-3 border border-slate-200 rounded-[28px] shadow-sm focus-within:border-indigo-500/30 focus-within:ring-[12px] focus-within:ring-indigo-500/5 transition-all">
                             <input
                                 type="text"
-                                className="flex-1 bg-transparent px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none"
+                                className="flex-1 bg-transparent px-6 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none font-medium"
                                 placeholder="Ask about phishing, security best practices..."
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
@@ -135,58 +127,61 @@ const Chatbot = ({ user }) => {
                             <button
                                 onClick={() => handleSend()}
                                 disabled={loading || !input.trim()}
-                                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-all shrink-0 shadow-md ${input.trim()
-                                    ? 'bg-primary text-white hover:bg-[#1e293b] active:scale-95'
+                                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0 shadow-lg ${input.trim()
+                                    ? 'bg-indigo-600 text-white hover:bg-slate-900 active:scale-95'
                                     : 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'
                                     }`}
                             >
-                                <Send size={18} />
+                                <Send size={20} />
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Sidebar Context */}
-                <div className="space-y-6">
-                    <div className="cyber-card p-5 bg-indigo-600 text-white relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10">
-                            <Sparkles size={60} />
+                {/* Training Context */}
+                <div className="space-y-8">
+                    <div className="premium-card p-8 bg-indigo-600 text-white relative overflow-hidden group">
+                        <div className="absolute top-[-20px] right-[-20px] opacity-10 group-hover:scale-125 transition-transform duration-700">
+                            <Sparkles size={100} />
                         </div>
                         <div className="relative z-10">
-                            <h4 className="font-bold text-sm mb-2 flex items-center gap-2">
-                                <Sparkles size={14} /> AI Context Aware
-                            </h4>
-                            <p className="text-xs text-indigo-100 leading-relaxed mb-4">
-                                Our assistant is trained on millions of cyber threat patterns and can explain technical security concepts in plain language.
+                            <div className="flex items-center gap-2 mb-4">
+                                <Sparkles size={16} className="text-indigo-200" />
+                                <h4 className="font-black text-[10px] uppercase tracking-widest text-indigo-100">Intelligence Node</h4>
+                            </div>
+                            <h3 className="text-xl font-extrabold mb-3 leading-tight tracking-tight">Active Neural Learning</h3>
+                            <p className="text-xs text-indigo-100/80 leading-relaxed font-medium">
+                                Trained on millions of malicious signatures. I can deconstruct social engineering tactics in seconds.
                             </p>
                         </div>
                     </div>
 
-                    <div className="cyber-card p-5">
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2 poppins">
-                            <Terminal size={14} /> Quick Inquiries
+                    <div className="premium-card p-8 bg-white overflow-hidden border border-slate-100">
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-8 flex items-center gap-3">
+                            <Terminal size={14} className="text-slate-300" /> Suggested Queries
                         </h4>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             {SUGGESTED.map(s => (
                                 <button
                                     key={s}
                                     onClick={() => handleSend(s)}
-                                    className="w-full text-left p-3 rounded-lg text-xs text-slate-600 border border-slate-100 hover:border-indigo-500/30 hover:bg-indigo-50 transition-all flex items-center justify-between group"
+                                    className="w-full text-left px-5 py-4 rounded-2xl text-[11px] font-bold text-slate-600 border border-slate-50 hover:border-indigo-500/30 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all flex items-center justify-between group"
                                 >
                                     <span>{s}</span>
-                                    <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-indigo-500" />
+                                    <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-all group-hover:translate-x-1" />
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    <div className="cyber-card p-5 bg-slate-50 border-dashed">
-                        <h4 className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-2 poppins">
-                            <MessageSquare size={14} className="text-primary" /> Active Support
-                        </h4>
-                        <p className="text-[10px] text-slate-500 leading-relaxed">
-                            Need deep technical analysis? Attach a full email header in the chat for a more detailed forensic scan.
-                        </p>
+                    <div className="premium-card p-8 bg-slate-50/50 border-dashed border-2 flex items-start gap-4">
+                        <MessageSquare size={18} className="text-indigo-600 shrink-0 mt-1" />
+                        <div>
+                            <h4 className="text-xs font-black text-slate-800 mb-1.5 uppercase tracking-widest">Header Analysis</h4>
+                            <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                                Paste full email headers for forensic verification.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

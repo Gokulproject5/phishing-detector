@@ -1,30 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* =============================================
-   CYBERSECURITY DASHBOARD - Design System
+   PHISHGUARD PREMIUM - Design System
    ============================================= */
 
 :root {
-    /* Spec Colors */
-    --primary: #0F172A;
-    /* Dark Navy */
-    --accent: #22C55E;
-    /* Safe Green */
-    --alert: #EF4444;
-    /* Phishing Red */
-    --bg-light: #F8FAFC;
-    --text-dark: #0F172A;
-    --text-muted: #64748B;
-    --border: #E2E8F0;
+    /* Human-Made Premium Palette */
+    --primary: #4F46E5;
+    /* Indigo 600 */
+    --primary-light: #EEF2FF;
+    --accent: #059669;
+    /* Emerald 600 */
+    --accent-light: #ECFDF5;
+    --alert: #E11D48;
+    /* Rose 600 */
+    --alert-light: #FFF1F2;
+    --warning: #D97706;
+    /* Amber 600 */
 
-    /* Modern UI Tokens */
-    --sidebar-width: 260px;
-    --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Neutral System */
+    --bg-main: #FDFDFF;
+    --bg-card: #FFFFFF;
+    --text-main: #0F172A;
+    --text-muted: #64748B;
+    --border: #F1F5F9;
+
+    /* Layout */
+    --sidebar-width: 280px;
+    --sidebar-collapsed: 88px;
+
+    /* Shadows & Glass */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.03), 0 2px 4px -2px rgb(0 0 0 / 0.03);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.03), 0 4px 6px -4px rgb(0 0 0 / 0.03);
+    --shadow-premium: 0 20px 40px -10px rgba(0, 0, 0, 0.05);
+    --glass-bg: rgba(255, 255, 255, 0.85);
 }
 
 * {
@@ -33,9 +47,10 @@
 
 body {
     margin: 0;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: var(--bg-light);
-    color: var(--text-dark);
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
 }
 
@@ -43,11 +58,12 @@ h1,
 h2,
 h3,
 h4,
-.poppins {
-    font-family: 'Poppins', sans-serif;
+.font-heading {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.02em;
 }
 
-/* Scrollbar */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -58,93 +74,95 @@ h4,
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
-    border-radius: 10px;
+    background: #E2E8F0;
+    border-radius: 20px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #94A3B8;
+    background: #CBD5E1;
 }
 
-/* Layout Utilities */
-.dashboard-container {
-    display: flex;
-    min-height: 100vh;
-}
-
+/* Premium Layout Components */
 .main-content {
-    flex: 1;
-    margin-left: var(--sidebar-width);
-    padding: 2rem;
-    transition: var(--transition);
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@media (max-width: 1024px) {
-    .main-content {
-        margin-left: 0;
-        padding: 1.5rem;
-    }
-}
-
-/* Card Style */
-.cyber-card {
-    background: white;
+.premium-card {
+    background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 1rem;
-    box-shadow: var(--card-shadow);
-    transition: var(--transition);
+    border-radius: 24px;
+    box-shadow: var(--shadow-premium);
+    transition: all 0.3s ease;
 }
 
-.cyber-card:hover {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+.premium-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
 }
 
-/* Button Variants */
-.btn-primary {
-    background-color: var(--primary);
+.glass-box {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Button Refinements */
+.btn-premium {
+    @apply flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all active:scale-95;
+    background: var(--primary);
     color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.75rem;
-    font-weight: 600;
-    transition: var(--transition);
+    box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.2);
 }
 
-.btn-primary:hover {
-    filter: brightness(1.2);
+.btn-premium:hover {
+    background: #4338CA;
+    box-shadow: 0 15px 20px -3px rgba(79, 70, 229, 0.3);
     transform: translateY(-1px);
 }
 
-.btn-accent {
-    background-color: var(--accent);
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 0.75rem;
-    font-weight: 600;
-    transition: var(--transition);
-}
-
-/* Input Styles */
-.cyber-input {
-    width: 100%;
-    padding: 1rem;
-    border-radius: 0.75rem;
-    border: 1px solid var(--border);
+.btn-secondary {
+    @apply flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all active:scale-95;
     background: white;
-    color: var(--text-dark);
-    transition: var(--transition);
+    color: var(--text-main);
+    border: 1px solid var(--border);
 }
 
-.cyber-input:focus {
-    outline: none;
-    border-color: #6366F1;
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+.btn-secondary:hover {
+    background: var(--bg-main);
+    border-color: #E2E8F0;
+}
+
+/* Typography Helpers */
+.text-gradient {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 /* Animations */
-@keyframes fadeIn {
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
+@keyframes slideUp {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(20px);
     }
 
     to {
@@ -153,6 +171,12 @@ h4,
     }
 }
 
-.animate-fade-in {
-    animation: fadeIn 0.4s ease-out forwards;
+.animate-slide-up {
+    animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Darker Sidebar Base (If needed in JS) */
+.sidebar-dark {
+    background-color: #1E1B4B;
+    /* Deep Royal Indigo */
 }

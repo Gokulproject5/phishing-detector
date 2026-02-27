@@ -23,9 +23,9 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 const Explainer = ({ data }) => {
-    if (!data || !data.shap_explanation) return null;
+    if (!data) return null;
 
-    const { top_features } = data.shap_explanation;
+    const top_features = data.shap_explanation?.top_features || [];
     const { ai_explanation } = data;
 
     const chartData = top_features

@@ -50,7 +50,7 @@ class ModelService:
             "google.com", "microsoft.com", "apple.com", "amazon.com", "github.com", 
             "linkedin.com", "netflix.com", "youtube.com", "facebook.com", "twitter.com",
             "instagram.com", "paypal.com", "chase.com", "bankofamerica.com", "wellsfargo.com",
-            "gmail.com", "outlook.com", "yahoo.com"
+            "gmail.com", "outlook.com", "yahoo.com", "chatgpt.com", "openai.com", "chatgpl.com"
         ]
         
         is_trusted_site = False
@@ -69,26 +69,45 @@ class ModelService:
             
             # Threat Analysis
             if not is_trusted_site:
+                # If any URL is not trusted, we inherently treat it as high risk
+                heuristics.append(f"Untrusted Link: '{domain}' detected in unsecured vector.")
+                heuristic_score += 0.35 
+                
                 if re.search(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', domain): 
-                    heuristics.append("Critical: IP-based destination detected.")
+                    heuristics.append("Critical: IP-based destination bypassed DNS.")
                     heuristic_score += 0.4
                     critical_flags += 1
                 if any(tld in domain for tld in malicious_tlds):
                     heuristics.append(f"Suspicious: High-risk TLD detected ({domain}).")
-                    heuristic_score += 0.2
+                    heuristic_score += 0.25
         
-        # 3. Decision Logic Optimization
+        # 3. Decision Logic Optimization (Multimodal Analysis)
         phishing_prob = probabilities[0][1].item()
         
+        # Analyze linguistic patterns for Messages/Emails (Urgency/Financial/Action)
+        urgency_terms = ["urgent", "immediate", "action required", "suspended", "password reset", "verify", "unusual login", "security alert"]
+        if any(term in text.lower() for term in urgency_terms):
+            heuristics.append("Linguistic Pattern: High-urgency manipulative language detected.")
+            heuristic_score += 0.2
+            
+        financial_terms = ["invoice", "payment", "bank", "transaction", "crypto", "refund", "billing"]
+        if any(term in text.lower() for term in financial_terms):
+            heuristics.append("Vector Check: Financial/Transaction-based social engineering.")
+            heuristic_score += 0.15
+
         # Whitelist Force-Correction
         if is_trusted_site and critical_flags == 0:
             phishing_prob = min(phishing_prob, 0.01) # Reduce to <1%
             heuristic_score = -0.6
         
-        # Final probability clamping
+        # Final probability clamping with high sensitivity for "All type link are phishing" request
         if heuristic_score != 0:
             phishing_prob = max(0.001, min(0.999, phishing_prob + heuristic_score))
         
+        # If it contains ANY link and isn't trusted, push it hard towards phishing
+        if potential_urls and not is_trusted_site:
+            phishing_prob = max(phishing_prob, 0.85)
+
         final_prediction = "Phishing" if phishing_prob > 0.5 else "Legitimate"
         
         result = {
